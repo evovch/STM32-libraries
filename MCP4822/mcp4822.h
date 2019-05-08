@@ -3,12 +3,22 @@
  *
  *  Created on: Apr 24, 2019
  *      Author: evovch
+ *  Updated on: May 8, 2019
+ *
  */
 
 #ifndef __MCP4822_H
 #define __MCP4822_H
 
 #include "spi.h"
+
+#define MCP4822_SPI_TIMEOUT 1
+
+//#define MCP4822_ENABLE_LCD
+
+#ifdef MCP4822_ENABLE_LCD
+#include "lcd_pcd8544.h"
+#endif // MCP4822_ENABLE_LCD
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,27 +29,32 @@ typedef enum {
 	MCP4822_CHANNEL_B = 1
 } enu_MCP4822_CHANNEL;
 
-/**
- * hspiDAC: SPI handle
- * val: 0-4095
- */
-void MCP4822_SetValue(SPI_HandleTypeDef* hspiDAC, enu_MCP4822_CHANNEL ch, unsigned short int val)
-{
-	unsigned char outData1[2] = {0, 0};
+typedef struct {
+	SPI_HandleTypeDef* mSpiHandle;
 
+	GPIO_TypeDef* mSpiCsPort;
+	uint16_t mSpiCsPin;
+
+} MCP4822_DAC_Pinout_t;
+
+typedef struct {
+	MCP4822_DAC_Pinout_t mPinout;
 	// GAIN bit
 	// 0: 2x, i.e. Vout = 2*Vref*val/4096
 	// 1: 1x, i.e. Vout =   Vref*val/4096, where internal Vref=2.048V
-	unsigned char gain = 0;
+	unsigned char mGain;
 
-	outData1[1] = ((ch & 0x1) << 7) | ((gain & 0x1) << 5) | 0b00010000 | ((val >> 8) & 0xf);
-	outData1[0] = ((val >> 0) & 0xff);
+} MCP4822_DAC_t;
 
-	//TODO testing - switched from IT to non-IT call
-	// added CS pins reset calls (to '1') afterwards
-	// last argument - timeout in ms
-	HAL_SPI_Transmit(hspiDAC, outData1, 1, 1); // HAL_SPI_Transmit_IT
-}
+/**
+ * val: 0-4095
+ */
+void MCP4822_SetValue(MCP4822_DAC_t* dac, enu_MCP4822_CHANNEL ch, unsigned short int val);
+
+/**
+ * valA and valB: 0-4095
+ */
+void MCP4822_SetValues(MCP4822_DAC_t* dac, unsigned short int val_chA, unsigned short int val_chB);
 
 #ifdef __cplusplus
 }
